@@ -3,6 +3,7 @@ import {
   authStorage,
   getProfile,
   listConversations,
+  createConversation,
   getConversationDetail,
   removeConversation,
   sendChatMessage,
@@ -33,11 +34,18 @@ export default function App() {
   const [sharedConversation, setSharedConversation] = useState(null);
 
   // Separación de estados para evitar mezclar chats
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [generatingChatIds, setGeneratingChatIds] = useState(() => new Set());
   const [isSwitchingChat, setIsSwitchingChat] = useState(false);
 
   // Almacén de caché en memoria para carga instantánea a 0 ms
   const chatCache = useRef(new Map());
+
+  // Indicador reactivo de generación para el chat actualmente activo
+  const isGenerating = Boolean(
+    activeConversationId
+      ? generatingChatIds.has(activeConversationId)
+      : Array.from(generatingChatIds).some((id) => id.startsWith('temp-'))
+  );
 
   // 1. Efecto para aplicar tema en el documento HTML
   useEffect(() => {
@@ -145,7 +153,6 @@ export default function App() {
     setActiveConversationId(null);
     setMessages([]);
     setIsSwitchingChat(false);
-    setIsGenerating(false);
   };
 
   // 7. Salir del modo compartido
@@ -206,13 +213,51 @@ export default function App() {
 
     const nextMessages = [...messages, userMsg];
     setMessages(nextMessages);
-    setIsGenerating(true);
+
+    let targetConvId = activeConversationId;
+    const tempTrackId = `temp-${Date.now()}`;
+
+    // Si es una consulta nueva (sin ID previo), crear de inmediato en BD y Sidebar
+    if (!targetConvId) {
+      setGeneratingChatIds((prev) => new Set(prev).add(tempTrackId));
+
+      try {
+        const titleSnippet = queryText.trim().slice(0, 100);
+        const newConv = await createConversation({
+          titulo: titleSnippet,
+          primer_mensaje: queryText,
+        });
+
+        targetConvId = newConv.id;
+        setActiveConversationId(newConv.id);
+
+        // Migrar ID de generación del temporal al definitivo de Supabase
+        setGeneratingChatIds((prev) => {
+          const next = new Set(prev);
+          next.delete(tempTrackId);
+          next.add(newConv.id);
+          return next;
+        });
+
+        // Registrar inmediatamente en la lista del Sidebar
+        setConversations((prev) => [newConv, ...prev.filter((c) => c.id !== newConv.id)]);
+
+        // Guardar mensaje optimista en caché del nuevo chat
+        chatCache.current.set(newConv.id, nextMessages);
+      } catch (errConv) {
+        console.error('Error al inicializar conversación en base de datos:', errConv);
+        // Continuar como fallback si hubiese un inconveniente puntual
+      }
+    } else {
+      setGeneratingChatIds((prev) => new Set(prev).add(targetConvId));
+      chatCache.current.set(targetConvId, nextMessages);
+    }
 
     try {
-      const response = await sendChatMessage(queryText, activeConversationId);
+      const response = await sendChatMessage(queryText, targetConvId);
 
       if (response.ok && response.data) {
-        const convId = activeConversationId || response.conversacion_id;
+        const finalConvId = targetConvId || response.conversacion_id;
         if (!activeConversationId && response.conversacion_id) {
           setActiveConversationId(response.conversacion_id);
         }
@@ -227,12 +272,19 @@ export default function App() {
         };
 
         const updatedHistory = [...nextMessages, assistantMsg];
-        setMessages(updatedHistory);
 
-        // Actualizar caché en memoria de inmediato para este chat
-        if (convId) {
-          chatCache.current.set(convId, updatedHistory);
+        // Actualizar caché en memoria para este chat específico
+        if (finalConvId) {
+          chatCache.current.set(finalConvId, updatedHistory);
         }
+
+        // Solo actualizar pantalla si el usuario sigue en esta conversación activa
+        setActiveConversationId((currentActiveId) => {
+          if (currentActiveId === finalConvId || currentActiveId === null) {
+            setMessages(updatedHistory);
+          }
+          return currentActiveId;
+        });
 
         loadConversations();
       } else {
@@ -248,9 +300,32 @@ export default function App() {
         outdated_alert: false,
         creado_en: new Date().toISOString(),
       };
-      setMessages((prev) => [...prev, errorMsg]);
+
+      const historyWithError = [...nextMessages, errorMsg];
+      if (targetConvId) {
+        chatCache.current.set(targetConvId, historyWithError);
+      }
+
+      setActiveConversationId((currentActiveId) => {
+        if (currentActiveId === targetConvId || currentActiveId === null) {
+          setMessages(historyWithError);
+        }
+        return currentActiveId;
+      });
     } finally {
-      setIsGenerating(false);
+      if (targetConvId) {
+        setGeneratingChatIds((prev) => {
+          const next = new Set(prev);
+          next.delete(targetConvId);
+          return next;
+        });
+      } else {
+        setGeneratingChatIds((prev) => {
+          const next = new Set(prev);
+          next.delete(tempTrackId);
+          return next;
+        });
+      }
     }
   };
 

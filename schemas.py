@@ -112,6 +112,12 @@ class ActualizarConversacionRequest(BaseModel):
     titulo: str = Field(min_length=1, max_length=255, description="Nuevo título descriptivo de la conversación")
 
 
+class CrearConversacionRequest(BaseModel):
+    titulo: Optional[str] = Field(default=None, description="Título descriptivo del tema consultado")
+    area_normativa: Optional[str] = Field(default="prevencion_lavado_activos", description="Área normativa de la consulta")
+    primer_mensaje: Optional[str] = Field(default=None, description="Primer mensaje del usuario a persistir de inmediato")
+
+
 class ConversacionItem(BaseModel):
     id: str = Field(description="UUID de la conversación")
     titulo: str = Field(description="Título descriptivo del tema consultado")

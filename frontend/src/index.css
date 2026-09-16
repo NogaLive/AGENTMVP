@@ -1582,23 +1582,24 @@ body[data-theme="dark"] .legal-highlight,
 .canvas-auth-wrapper {
   flex: 1;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 2rem;
+  padding: 2.5rem 1.5rem;
   background-color: var(--bg-main);
   animation: fadeInChat 200ms ease;
   overflow-y: auto;
+  width: 100%;
 }
 
 .auth-card-embedded {
-  background: var(--bg-card);
-  border: 1px solid var(--border-medium);
-  border-radius: 28px;
-  /* Súper redondeado */
+  background: transparent;
+  border: none;
+  border-radius: 0;
   width: 100%;
   max-width: 440px;
-  padding: 2.5rem 2.25rem;
-  box-shadow: var(--floating-shadow);
+  padding: 0;
+  box-shadow: none;
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
@@ -1609,38 +1610,42 @@ body[data-theme="dark"] .legal-highlight,
 }
 
 .auth-logo-badge {
-  width: 54px;
-  height: 54px;
-  margin: 0 auto 0.9rem;
-  background: var(--brand-primary);
-  border-radius: 18px;
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 1.1rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-medium);
+  border-radius: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #FFFFFF;
-  box-shadow: 0 4px 16px var(--brand-glow);
+  color: var(--brand-primary);
+  box-shadow: var(--card-shadow);
 }
 
 .auth-header h2 {
-  font-size: 1.35rem;
+  font-size: 1.6rem;
   font-weight: 700;
   color: var(--text-primary);
+  letter-spacing: -0.02em;
+  margin-bottom: 0.4rem;
 }
 
 .auth-header p {
-  font-size: 0.84rem;
-  color: var(--text-muted);
-  margin-top: 0.35rem;
-  line-height: 1.5;
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  line-height: 1.55;
+  margin: 0 auto;
+  max-width: 380px;
 }
 
 .auth-tabs {
   display: flex;
-  background: var(--bg-elevated);
+  background: var(--bg-card);
   padding: 4px;
   border-radius: 9999px;
-  /* Píldora */
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-medium);
+  box-shadow: var(--card-shadow);
 }
 
 .auth-tab {
@@ -1657,9 +1662,9 @@ body[data-theme="dark"] .legal-highlight,
 }
 
 .auth-tab.active {
-  background: var(--bg-card);
-  color: var(--text-primary);
-  box-shadow: var(--card-shadow);
+  background: var(--brand-primary);
+  color: #FFFFFF;
+  box-shadow: 0 2px 8px var(--brand-glow);
 }
 
 .auth-form {
@@ -1681,30 +1686,33 @@ body[data-theme="dark"] .legal-highlight,
 }
 
 .form-input {
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-subtle);
+  background: var(--bg-card);
+  border: 1px solid var(--border-medium);
   border-radius: 14px;
-  padding: 0.75rem 1rem;
+  padding: 0.8rem 1rem;
   color: var(--text-primary);
   font-size: 0.88rem;
   outline: none;
-  transition: border-color 150ms ease, background 150ms ease;
+  box-shadow: var(--card-shadow);
+  transition: border-color 150ms ease, box-shadow 150ms ease, background 150ms ease;
 }
 
 .form-input:focus {
   border-color: var(--brand-primary);
+  box-shadow: 0 0 0 3px var(--brand-glow);
   background: var(--bg-card);
 }
 
 .password-policy-box {
-  background: var(--bg-elevated);
+  background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   border-radius: 16px;
-  padding: 0.75rem 1rem;
-  font-size: 0.74rem;
+  padding: 0.85rem 1.1rem;
+  font-size: 0.76rem;
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 0.45rem;
+  box-shadow: var(--card-shadow);
 }
 
 .policy-item {
@@ -1723,13 +1731,12 @@ body[data-theme="dark"] .legal-highlight,
   background: var(--brand-primary);
   border: none;
   color: #FFFFFF;
-  padding: 0.85rem;
-  border-radius: 9999px;
-  /* Botón cápsula */
+  padding: 0.85rem 1.25rem;
+  border-radius: 14px;
   font-weight: 600;
   font-size: 0.92rem;
   cursor: pointer;
-  box-shadow: 0 4px 12px var(--brand-glow);
+  box-shadow: 0 4px 14px var(--brand-glow);
   margin-top: 0.5rem;
   transition: all 160ms ease;
 }

@@ -31,6 +31,7 @@ from schemas import (
     ConversacionDetalle,
     ShareResponse,
     ActualizarConversacionRequest,
+    CrearConversacionRequest,
     ActualizarDocumentoRequest
 )
 from agent import consultar_asistente
@@ -85,6 +86,70 @@ def listar_conversaciones(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error al consultar el historial de conversaciones."
+        )
+
+
+@app.post("/api/conversaciones", response_model=ConversacionItem, status_code=status.HTTP_201_CREATED, summary="Crear nueva conversación")
+def crear_conversacion(
+    solicitud: CrearConversacionRequest,
+    current_user: dict = Depends(get_current_user),
+    db: Client = Depends(get_db)
+) -> ConversacionItem:
+    """Crea una conversación de forma inmediata y opcionalmente persiste el primer mensaje del usuario."""
+    try:
+        ahora_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+        titulo = (solicitud.titulo or "").strip()
+        if not titulo and solicitud.primer_mensaje:
+            titulo = solicitud.primer_mensaje.strip()[:150]
+        if not titulo:
+            titulo = "Nueva Consulta Regulatoria"
+        elif len(titulo) > 150:
+            titulo = titulo[:147] + "..."
+
+        area = solicitud.area_normativa or "prevencion_lavado_activos"
+
+        res_conv = db.table("conversaciones").insert({
+            "usuario_id": current_user["id"],
+            "titulo": titulo,
+            "area_normativa": area,
+            "creado_en": ahora_iso,
+            "actualizado_en": ahora_iso
+        }).execute()
+
+        if not res_conv.data:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="No se pudo registrar la conversación en la base de datos."
+            )
+
+        conv_row = res_conv.data[0]
+        conv_id = str(conv_row["id"])
+
+        # Si se incluye el primer mensaje, persistirlo inmediatamente en la tabla mensajes
+        if solicitud.primer_mensaje and solicitud.primer_mensaje.strip():
+            db.table("mensajes").insert({
+                "conversacion_id": conv_id,
+                "rol": "user",
+                "contenido": solicitud.primer_mensaje.strip(),
+                "creado_en": ahora_iso
+            }).execute()
+
+        return ConversacionItem(
+            id=conv_id,
+            titulo=conv_row.get("titulo", titulo),
+            area_normativa=conv_row.get("area_normativa", area),
+            creado_en=str(conv_row.get("creado_en", ahora_iso)),
+            actualizado_en=str(conv_row.get("actualizado_en", ahora_iso)),
+            total_mensajes=1 if solicitud.primer_mensaje else 0
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error al crear conversación: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error al inicializar la conversación."
         )
 
 
@@ -419,24 +484,40 @@ def chat_endpoint(
                 )
             conversacion_id = str(res_nueva.data[0]["id"])
 
-        # 2. Obtener historial previo de mensajes para dar memoria conversacional
-        res_hist = db.table("mensajes").select("rol, contenido").eq("conversacion_id", conversacion_id).order("creado_en", desc=False).execute()
-        mensajes_previos = res_hist.data or []
+        # 2. Persistir mensaje de usuario inmediatamente (si no ha sido guardado ya)
+        # y preparar el historial previo para el agente
+        res_hist = db.table("mensajes").select("id, rol, contenido, creado_en").eq("conversacion_id", conversacion_id).order("creado_en", desc=False).execute()
+        mensajes_existentes = res_hist.data or []
+
+        ya_insertado = False
+        if mensajes_existentes:
+            ultimo = mensajes_existentes[-1]
+            if ultimo.get("rol") == "user" and ultimo.get("contenido", "").strip() == solicitud.query.strip():
+                ya_insertado = True
+
+        if not ya_insertado:
+            ahora_user_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+            try:
+                db.table("mensajes").insert({
+                    "conversacion_id": conversacion_id,
+                    "rol": "user",
+                    "contenido": solicitud.query,
+                    "creado_en": ahora_user_iso
+                }).execute()
+            except Exception as e_user_msg:
+                logger.error(f"Error al insertar mensaje de usuario previo a agente: {e_user_msg}")
+
+            mensajes_previos = [{"rol": m["rol"], "contenido": m["contenido"]} for m in mensajes_existentes]
+        else:
+            # Si ya estaba insertado como el último mensaje, los previos son los anteriores a este
+            mensajes_previos = [{"rol": m["rol"], "contenido": m["contenido"]} for m in mensajes_existentes[:-1]]
 
         # 3. Invocar al agente LangChain
         resultado = consultar_asistente(solicitud, mensajes_previos=mensajes_previos)
         t_total_ms = int((time.time() - t_inicio) * 1000)
 
-        # 4. Guardar turno en Supabase (user y assistant) de forma defensiva
+        # 4. Guardar turno del asistente en Supabase de forma defensiva
         try:
-            # Turno usuario
-            db.table("mensajes").insert({
-                "conversacion_id": conversacion_id,
-                "rol": "user",
-                "contenido": solicitud.query
-            }).execute()
-
-            # Turno asistente con auditoría completa
             db.table("mensajes").insert({
                 "conversacion_id": conversacion_id,
                 "rol": "assistant",
@@ -454,7 +535,7 @@ def chat_endpoint(
                 "actualizado_en": ahora_iso
             }).eq("id", conversacion_id).execute()
         except Exception as err_db:
-            logger.error(f"Error al persistir mensajes del turno en Supabase: {err_db}")
+            logger.error(f"Error al persistir mensaje del asistente en Supabase: {err_db}")
 
         resultado.conversacion_id = conversacion_id
         return resultado

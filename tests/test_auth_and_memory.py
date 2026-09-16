@@ -109,6 +109,11 @@ class TestAuthAndMemory(unittest.TestCase):
         resp = client.patch("/api/conversaciones/test-id-123", json={"titulo": "Nuevo Título"})
         self.assertEqual(resp.status_code, 401)
 
+    def test_crear_conversacion_requiere_autenticacion(self):
+        """Verifica que /api/conversaciones con POST requiera usuario autenticado (401)."""
+        resp = client.post("/api/conversaciones", json={"titulo": "Consulta Test", "primer_mensaje": "¿Cuál es la norma?"})
+        self.assertEqual(resp.status_code, 401)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

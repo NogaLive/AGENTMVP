@@ -102,6 +102,17 @@ export async function listConversations() {
   });
 }
 
+export async function createConversation(data = {}) {
+  return await apiRequest('/api/conversaciones', {
+    method: 'POST',
+    body: JSON.stringify({
+      titulo: data.titulo || null,
+      area_normativa: data.area_normativa || 'prevencion_lavado_activos',
+      primer_mensaje: data.primer_mensaje || null,
+    }),
+  });
+}
+
 export async function getConversationDetail(id) {
   return await apiRequest(`/api/conversaciones/${id}`, {
     method: 'GET',
