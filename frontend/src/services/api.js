@@ -28,6 +28,15 @@ export const authStorage = {
   }
 };
 
+export const API_BASE_URL = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+
+export function getFullApiUrl(path) {
+  if (!path) return '';
+  if (path.startsWith('http://') || path.startsWith('https://')) return path;
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  return `${API_BASE_URL}${cleanPath}`;
+}
+
 async function apiRequest(endpoint, options = {}) {
   const token = authStorage.getToken();
   const headers = {
@@ -39,7 +48,7 @@ async function apiRequest(endpoint, options = {}) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const response = await fetch(endpoint, {
+  const response = await fetch(getFullApiUrl(endpoint), {
     ...options,
     headers,
   });
@@ -162,7 +171,7 @@ export async function getDocumentoExtracto(documento, resolucion) {
   if (documento) params.append('documento', documento);
   if (resolucion) params.append('resolucion', resolucion);
   try {
-    const res = await fetch(`/api/documentos/extracto/detalle?${params.toString()}`);
+    const res = await fetch(getFullApiUrl(`/api/documentos/extracto/detalle?${params.toString()}`));
     return await res.json().catch(() => ({ ok: false }));
   } catch (err) {
     return { ok: false, error: err.message };
@@ -174,7 +183,7 @@ export async function listRepositoryDocuments() {
   const headers = {};
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  const res = await fetch('/api/documentos/repositorio/listar', {
+  const res = await fetch(getFullApiUrl('/api/documentos/repositorio/listar'), {
     method: 'GET',
     headers,
   });
@@ -191,7 +200,7 @@ export async function uploadRepositoryDocument(file, carpeta = 'sbs') {
   formData.append('file', file);
   formData.append('carpeta', carpeta);
 
-  const res = await fetch('/api/documentos/upload', {
+  const res = await fetch(getFullApiUrl('/api/documentos/upload'), {
     method: 'POST',
     headers,
     body: formData,
@@ -208,7 +217,7 @@ export async function deleteRepositoryDocument(carpeta, filename) {
   const headers = {};
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  const res = await fetch(`/api/documentos/${encodeURIComponent(carpeta)}/${encodeURIComponent(filename)}`, {
+  const res = await fetch(getFullApiUrl(`/api/documentos/${encodeURIComponent(carpeta)}/${encodeURIComponent(filename)}`), {
     method: 'DELETE',
     headers,
   });
@@ -226,7 +235,7 @@ export async function updateRepositoryDocument(carpeta, filename, updateData) {
   };
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  const res = await fetch(`/api/documentos/${encodeURIComponent(carpeta)}/${encodeURIComponent(filename)}`, {
+  const res = await fetch(getFullApiUrl(`/api/documentos/${encodeURIComponent(carpeta)}/${encodeURIComponent(filename)}`), {
     method: 'PATCH',
     headers,
     body: JSON.stringify(updateData),

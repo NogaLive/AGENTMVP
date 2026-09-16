@@ -4,6 +4,7 @@ import {
   uploadRepositoryDocument,
   deleteRepositoryDocument,
   updateRepositoryDocument,
+  getFullApiUrl,
 } from '../services/api';
 
 export default function DocumentRepositoryManager({ onBackToChat }) {
@@ -378,7 +379,7 @@ export default function DocumentRepositoryManager({ onBackToChat }) {
                 </div>
 
                 <a
-                  href={`/api/documentos/${encodeURIComponent(doc.nombre)}`}
+                  href={getFullApiUrl(`/api/documentos/${encodeURIComponent(doc.nombre)}`)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="slot-open-link"

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { getDocumentoExtracto } from '../services/api';
+import { getDocumentoExtracto, getFullApiUrl } from '../services/api';
 
 /**
  * Función de resaltado sintáctico de términos y cláusulas jurídicas regulatorias.
@@ -102,7 +102,7 @@ export default function CitationCard({ fuente }) {
     }
   };
 
-  const pdfUrl = `/api/documentos/${encodeURIComponent(documento)}`;
+  const pdfUrl = getFullApiUrl(`/api/documentos/${encodeURIComponent(documento)}`);
 
   return (
     <div
