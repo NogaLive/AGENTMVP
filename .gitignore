@@ -1,0 +1,41 @@
+# Entornos virtuales
+.venv/
+venv/
+ENV/
+env/
+
+# Secretos y variables de entorno
+.env
+.env.*
+!.env.example
+
+# Caché de Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+
+# Datos locales y persistencia no versionada
+*.db
+*.sqlite
+data/*.db
+data/*.sqlite
+data_shared_tokens.json
+
+# Frontend (Node / Vite)
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local
+frontend/.env.*.local
+dist/
+
+# Vercel
+.vercel/
+
+# IDEs y sistemas operativos
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

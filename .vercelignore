@@ -1,0 +1,13 @@
+.venv/
+venv/
+__pycache__/
+*.pyc
+.env
+.env.*
+!.env.example
+.git
+.github
+tests/
+PoCTemplateLangChainOpenRouterNemotron(24082026155000).ipynb
+data_shared_tokens.json
+frontend/node_modules/
