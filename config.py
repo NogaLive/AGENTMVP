@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     openrouter_base_url: str = Field(default="https://openrouter.ai/api/v1", alias="OPENROUTER_BASE_URL")
     model_id: str = Field(
         default="nvidia/nemotron-3.5-lightning:free",
-        validation_alias=AliasChoices("MODEL_ID", "LLM_MODEL")x
+        validation_alias=AliasChoices("MODEL_ID", "LLM_MODEL")
     )
 
     # Persistencia Vectorial (Supabase)
