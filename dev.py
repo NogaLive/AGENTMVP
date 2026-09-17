@@ -10,12 +10,34 @@ import signal
 import time
 from pathlib import Path
 
+# Asegurar codificación UTF-8 en Windows para evitar UnicodeEncodeError con emojis
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 # Asegurar disponibilidad de Node/npm en Windows
 if r"C:\Program Files\nodejs" not in os.environ.get("PATH", ""):
     os.environ["PATH"] = r"C:\Program Files\nodejs;" + os.environ.get("PATH", "")
 
 ROOT_DIR = Path(__file__).resolve().parent
-PYTHON_EXE = sys.executable
+
+def obtener_python_venv() -> str:
+    """Detecta y prioriza automáticamente el intérprete del entorno virtual del proyecto."""
+    candidatos = [
+        ROOT_DIR / "venv" / "Scripts" / "python.exe",
+        ROOT_DIR / ".venv" / "Scripts" / "python.exe",
+        ROOT_DIR / "venv" / "bin" / "python",
+        ROOT_DIR / ".venv" / "bin" / "python",
+    ]
+    for cand in candidatos:
+        if cand.exists():
+            return str(cand)
+    return sys.executable
+
+PYTHON_EXE = obtener_python_venv()
 
 PROCESOS = []
 
@@ -56,6 +78,7 @@ def main():
 
     print("=" * 65)
     print("🚀 INICIANDO ENTORNO DE DESARROLLO (ComplianceAI)")
+    print(f"🐍 Python Runtime: {PYTHON_EXE}")
     print("=" * 65)
 
     # 1. Iniciar Servidor FastMCP en puerto 8001
@@ -89,12 +112,14 @@ def main():
 
     print("\n[DEV] Stack en ejecución. Presiona Ctrl + C para detener todos los servicios.\n")
 
+    procesos_advertidos = set()
     try:
         while True:
             # Monitorear si algún proceso murió inesperadamente
             for nombre, p in PROCESOS:
                 ret = p.poll()
-                if ret is not None:
+                if ret is not None and nombre not in procesos_advertidos:
+                    procesos_advertidos.add(nombre)
                     print(f"[DEV] ⚠️ Advertencia: El proceso {nombre} terminó con código {ret}.")
             time.sleep(2)
     except KeyboardInterrupt:

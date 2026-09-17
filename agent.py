@@ -51,7 +51,7 @@ def obtener_llm() -> ChatOpenAI:
         },
         extra_body={
             "models": [
-                "nvidia/nemotron-3-ultra-550b-a55b:free",
+                "nvidia/nemotron-3.5-lightning:free",
                 "meta-llama/llama-3.3-70b-instruct:free",
                 "google/gemini-2.0-flash-exp:free"
             ]
@@ -223,12 +223,15 @@ def consultar_asistente(
         mensajes_historial.append(HumanMessage(content=msg_usuario))
 
         # 3. Aplicar poda inteligente (trim_messages) para optimizar consumo de tokens
+        def contar_tokens(msgs: list) -> int:
+            return sum(max(1, len(str(getattr(m, "content", ""))) // 4) for m in msgs)
+
         try:
             mensajes_podados = trim_messages(
                 mensajes_historial,
                 max_tokens=2000,
                 strategy="last",
-                token_counter=llm,
+                token_counter=contar_tokens,
                 allow_partial=False,
                 start_on="human"
             )
